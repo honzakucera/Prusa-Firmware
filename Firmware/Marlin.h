@@ -79,7 +79,7 @@ extern FILE _uartout;
 #define SERIAL_PROTOCOL_F(x,y) (MYSERIAL.print(x,y))
 #define SERIAL_PROTOCOLPGM(x) (serialprintPGM(PSTR(x)))
 #define SERIAL_PROTOCOLRPGM(x) (serialprintPGM((x)))
-#define SERIAL_PROTOCOLLN(x) (MYSERIAL.println(x)/*,MYSERIAL.write('\n')*/)
+#define SERIAL_PROTOCOLLN(x) (MYSERIAL.print(x),MYSERIAL.write('\n'))
 #define SERIAL_PROTOCOLLNPGM(x) (serialprintPGM(PSTR(x)),MYSERIAL.println()/*write('\n')*/)
 #define SERIAL_PROTOCOLLNRPGM(x) (serialprintPGM((x)),MYSERIAL.println()/*write('\n')*/)
 
@@ -340,6 +340,10 @@ extern unsigned int usb_printing_counter;
 extern unsigned long kicktime;
 
 extern unsigned long total_filament_used;
+/*#FLB*/
+extern unsigned long time_used_in_last_print;
+void filament_used_in_last_print();
+/*#FLB*/
 void save_statistics(unsigned long _total_filament_used, unsigned long _total_print_time);
 extern unsigned int heating_status;
 extern unsigned int status_number;

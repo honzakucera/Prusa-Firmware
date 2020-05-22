@@ -152,6 +152,28 @@
 #define FILAMENT_PVA 2
 #define FILAMENT_UNDEFINED 255
 
+/*#FLB*/
+int Fabman_mode = 0;
+extern void lcd_FM_login();
+extern void serial_FM_login();
+extern void serial_FM_logoff();
+extern void lcd_FM_offline_screen();
+extern void check_FM_login();
+extern void lcd_FM_not_allowed_screen();
+extern void lcd_FM_required_training_screen();
+extern void lcd_FM_required_package_screen();
+extern void lcd_FM_not_online_screen();
+extern void lcd_FM_FM_update_screen();
+extern void lcd_FM_login_screen();
+extern void FM_print_username();
+extern char FM_IP[18];
+extern char FM_UserName[18];
+extern char FM_VER[18];
+extern bool lock_FM_FW_TYPE;
+extern bool selected_FM_FW_TYPE;
+extern void getConfigFromJSON();
+
+/*#FLB*/
 //Stepper Movement Variables
 
 //===========================================================================
@@ -220,6 +242,9 @@ bool prusa_sd_card_upload = false;
 
 unsigned int status_number = 0;
 
+/*#FLB*/
+unsigned long time_used_in_last_print;
+/*#FLB*/
 unsigned long total_filament_used;
 unsigned int heating_status;
 unsigned int heating_status_counter;
@@ -1626,6 +1651,10 @@ void setup()
 #ifdef WATCHDOG
   wdt_enable(WDTO_4S);
 #endif //WATCHDOG
+  /*#FLB*/
+  Fabman_mode = 1;
+  lcd_FM_login(); //FabLab
+  /*#FLB*/
 }
 
 
@@ -1858,6 +1887,7 @@ void loop()
 	}
 #endif //TMC2130
 	mmu_loop();
+  check_FM_login(); //#FLB
 }
 
 #define DEFINE_PGM_READ_ANY(type, reader)       \
@@ -3499,7 +3529,53 @@ void process_commands()
 	  starpos = (strchr(strchr_pointer + 5, '*'));
 	  if (starpos != NULL)
 		  *(starpos) = '\0';
+/*#FLB*/
+    SERIAL_ECHO("UNM_pointer: ");
+    SERIAL_ECHOLN(strchr_pointer + 5);
+
+    char input_data[18];
+    size_t array_size = sizeof (input_data);
+    strncpy(input_data, (strchr_pointer + 11), array_size);
+    input_data[array_size] = '\0';
+    // If the second-fourth char is dot and first char is number, save it as IP address
+    if (((input_data[1] == '.') || (input_data[2] == '.') || (input_data[3] == '.'))
+        && ((input_data[0] > 47) && (input_data[0] < 58))) {
+      FM_IP[0] = ' ';
+      for(int i=0; i<=array_size; i++) {
+        FM_IP[i+1] = input_data[i];
+      }
+      FM_IP[array_size] = '\0';
+      SERIAL_ECHO("UNM IP: ");
+      SERIAL_ECHOLN(FM_IP);
+    }else if((input_data[0] == 'v') && (input_data[1] > 47) && (input_data[1] < 58)){
+      FM_VER[0] = ' ';
+      for(int i=1; i<=array_size; i++) {
+        FM_VER[i] = input_data[i];
+      }
+      FM_VER[array_size] = '\0';
+      SERIAL_ECHO("UNM Version: ");
+      SERIAL_ECHOLN(FM_VER);
+    }
+    // If the first three chars are "FM_", save it as debug type from "FM_FW_<0/1>"
+    else if ((input_data[0] == 'F') && (input_data[1] == 'M') && (input_data[2] == '_')) {
+      // The 6th char is number 0 or 1, the ASCII value 48 or 49
+      selected_FM_FW_TYPE = input_data[6] - 48;
+      // Unlock FM_FW_TYPE
+      lock_FM_FW_TYPE = 0;
+    }
+    // If not, is is decoded as name
+    else {
 	  lcd_setstatus(strchr_pointer + 5);
+      // Save input as name
+      for(int i=0; i<=array_size; i++) {
+        FM_UserName[i] = input_data[i];
+      }
+      FM_UserName[array_size] = '\0';
+      SERIAL_ECHO("UNM UserName: ");
+      SERIAL_ECHOLN(FM_UserName);
+    }
+/*#FLB*/
+// lcd_setstatus(strchr_pointer + 5);
   }
 
 #ifdef TMC2130
@@ -6867,6 +6943,7 @@ Sigma_Exit:
       if (beepS > 0)
       {
         #if BEEPER > 0
+        if((eSoundMode==e_SOUND_MODE_LOUD) || (eSoundMode==e_SOUND_MODE_ONCE) || (eSoundMode == e_SOUND_MODE_SILENT)) //#FLB
           Sound_MakeCustom(beepP,beepS,false);
         #endif
       }
@@ -7208,6 +7285,42 @@ Sigma_Exit:
   case 603: {
 		lcd_print_stop();
 	}
+
+  /*#FLB*/
+  case 691:
+    lcd_FM_FM_update_screen();
+    break;
+  case 692:
+    getConfigFromJSON();
+    break;
+  case 693:
+    lcd_FM_not_online_screen();
+    break;
+
+  case 694:
+    lcd_FM_required_package_screen();
+    break;
+
+  case 695:
+    lcd_FM_required_training_screen();
+    break;
+
+  case 696:
+    lcd_FM_not_allowed_screen();
+    break;
+
+  case 697:
+    lcd_FM_offline_screen();
+    break;
+
+  case 698:
+    serial_FM_login();
+    break;
+
+  case 699:
+    serial_FM_logoff();
+    break;
+  /*#FLB*/
 
 #ifdef PINDA_THERMISTOR
   //! ### M860 - Wait for extruder temperature (PINDA)
@@ -8672,11 +8785,14 @@ void Stop()
   disable_heater();
   if(Stopped == false) {
     Stopped = true;
+    SERIAL_ECHO_START;// #FLB
+    SERIAL_ECHOLN("stoptype:1");// #FLB
     lcd_print_stop();
     Stopped_gcode_LastN = gcode_LastN; // Save last g_code for restart
     SERIAL_ERROR_START;
     SERIAL_ERRORLNRPGM(MSG_ERR_STOPPED);
     LCD_MESSAGERPGM(_T(MSG_STOPPED));
+    filament_used_in_last_print(); // #FLB
   }
 }
 

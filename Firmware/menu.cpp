@@ -183,6 +183,14 @@ static void menu_draw_item_puts_P(char type_char, const char* str)
     lcd_set_cursor(0, menu_row);
     lcd_printf_P(PSTR("%c%-18.18S%c"), menu_selection_mark(), str, type_char);
 }
+/*#FLB*/
+static int menu_draw_item_puts_P_FL(char type_char, char str[18])
+{
+    lcd_set_cursor(0, menu_row);
+    int cnt = lcd_printf_P(PSTR("%c%-18.18s%c"), (lcd_encoder == menu_item)?'>':' ', str, type_char);
+  return cnt;
+}
+/*#FLB*/
 
 //! @brief Format sheet name
 //!
@@ -263,6 +271,19 @@ uint8_t menu_item_text_P(const char* str)
 	menu_item++;
 	return 0;
 }
+/*#FLB*/
+uint8_t menu_item_text_P_FL(char str[18])
+{
+  if (menu_item == menu_line)
+  {
+    if (lcd_draw_update) menu_draw_item_puts_P_FL(LCD_STR_UPLEVEL[0], str);
+    if (menu_clicked && (lcd_encoder == menu_item))
+      return menu_item_ret();
+  }
+  menu_item++;
+  return 0;
+}
+/*#FLB*/
 
 uint8_t menu_item_submenu_P(const char* str, menu_func_t submenu)
 {

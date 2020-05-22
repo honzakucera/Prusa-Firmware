@@ -42,6 +42,35 @@
 #include "io_atmega2560.h"
 #include "first_lay_cal.h"
 
+/*#FLB*/
+extern int Fabman_mode;
+//extern lcd_FM_login_screen();
+extern char FM_IP[18];
+extern char FM_UserName[18];
+extern char FM_VER[18];
+extern bool lock_FM_FW_TYPE;
+extern bool selected_FM_FW_TYPE;
+extern char *username;
+bool stoppedInfo;
+
+void lcd_FM_FW_type_set() {
+	// Lock for one-time change
+  if (lock_FM_FW_TYPE == 0) {
+		// Change actual type to opposite
+		if(selected_FM_FW_TYPE == 1) { 
+			SERIAL_PROTOCOLLN("Firmware:0");
+		}
+		else {
+			SERIAL_PROTOCOLLN("Firmware:1");
+		}
+		lock_FM_FW_TYPE = 1;
+	}
+}
+
+void update_FM_FW() {
+	SERIAL_PROTOCOLLN("Update:1");
+}
+/*#FLB*/
 
 int scrollstuff = 0;
 char longFilenameOLD[LONG_FILENAME_LENGTH];
@@ -2078,6 +2107,21 @@ static void lcd_support_menu()
 
   MENU_ITEM_BACK_P(_T(MSG_MAIN));
 
+  /*#FLB*/
+  MENU_ITEM_BACK_P(PSTR("FM IP: "));
+  menu_item_text_P_FL(FM_IP);
+  MENU_ITEM_BACK_P(PSTR("FM version: "));
+  menu_item_text_P_FL(FM_VER);
+  // Selector for debug mode in Fabman
+  if (selected_FM_FW_TYPE == 0) {
+    MENU_ITEM_FUNCTION_P(_i("FM FW type [stable]"), lcd_FM_FW_type_set);
+	}
+  else {
+    MENU_ITEM_FUNCTION_P(_i("FM FW type [debug]"), lcd_FM_FW_type_set);
+	}
+	MENU_ITEM_FUNCTION_P(_i("Update FM FW"), update_FM_FW);
+
+  /*#FLB*/
   MENU_ITEM_BACK_P(PSTR("Firmware:"));
   MENU_ITEM_BACK_P(PSTR(" " FW_VERSION_FULL));
 #if (FW_DEV_VERSION != FW_VERSION_GOLD) && (FW_DEV_VERSION != FW_VERSION_RC)
@@ -4395,6 +4439,97 @@ uint8_t nlines;
 }
 #endif //FILAMENT_SENSOR
 
+/*#FLB*/
+
+void lcd_FM_login_screen() {
+  SERIAL_PROTOCOLLN("Stage 3 = reached lcd_FM_login_screen()");
+  lcd_update_enable(false);
+  lcd_clear();
+  lcd_set_custom_characters_progress();
+  
+  lcd_puts_at_P(2, 1, _i("Prusa i3 Fabman"));
+	lcd_puts_at_P(3, 2, _i("Swipe to login"));
+  while (Fabman_mode == 1) {
+    delay_keep_alive(100);
+    proc_commands();
+  }
+  lcd_set_custom_characters_degree();
+  lcd_update_enable(true);
+  lcd_update(2);
+}
+
+void lcd_FM_offline_screen() {
+  SERIAL_PROTOCOLLN("Stage 3 = reached lcd_FM_offline_screen()");
+  lcd_update_enable(true);
+  uint8_t nlines;
+  lcd_display_message_fullscreen_P(_i("Printer is out of order."), nlines); ////MSG_AUTOLOADING_ONLY_IF_FSENS_ON c=20 r=4
+  for (int i = 0; i < 50; i++) { //wait max. 5s
+    delay_keep_alive(100);
+  }
+  lcd_puts_P(PSTR(ESC_2J ESC_H(2, 1) "Prusa i3 Fabman" ESC_H(3, 2) "Swipe to login"));
+}
+
+void lcd_FM_not_allowed_screen() {
+  SERIAL_PROTOCOLLN("Stage 3 = reached lcd_FM_not_allowed_screen()");
+  lcd_update_enable(true);
+  uint8_t nlines;
+  lcd_display_message_fullscreen_P(_i("You are not allowed to use this printer outside opening hours."), nlines); ////MSG_AUTOLOADING_ONLY_IF_FSENS_ON c=20 r=4
+  for (int i = 0; i < 50; i++) { //wait max. 5s
+    delay_keep_alive(100);
+  }
+  lcd_puts_P(PSTR(ESC_2J ESC_H(2, 1) "Prusa i3 Fabman" ESC_H(3, 2) "Swipe to login"));
+}
+void lcd_FM_required_training_screen() {
+  SERIAL_PROTOCOLLN("Stage 3 = reached lcd_FM_required_training_screen()");
+  lcd_update_enable(true);
+  uint8_t nlines;
+  lcd_display_message_fullscreen_P(_i("You do not have required training course!!"), nlines); ////MSG_AUTOLOADING_ONLY_IF_FSENS_ON c=20 r=4
+  for (int i = 0; i < 50; i++) { //wait max. 5s
+    delay_keep_alive(100);
+  }
+  lcd_puts_P(PSTR(ESC_2J ESC_H(2, 1) "Prusa i3 Fabman" ESC_H(3, 2) "Swipe to login"));
+}
+
+void lcd_FM_required_package_screen() {
+  SERIAL_PROTOCOLLN("Stage 3 = reached lcd_FM_required_package_screen()");
+  lcd_update_enable(true);
+  uint8_t nlines;
+  lcd_display_message_fullscreen_P(_i("You do not have active package. Please buy one."), nlines); ////MSG_AUTOLOADING_ONLY_IF_FSENS_ON c=20 r=4
+  for (int i = 0; i < 50; i++) { //wait max. 5s
+    delay_keep_alive(100);
+  }
+  lcd_puts_P(PSTR(ESC_2J ESC_H(2, 1) "Prusa i3 Fabman" ESC_H(3, 2) "Swipe to login"));
+}
+
+void lcd_FM_not_online_screen() {
+  SERIAL_PROTOCOLLN("Stage 3 = reached lcd_FM_not_online_screen()");
+  lcd_update_enable(true);
+  uint8_t nlines;
+  lcd_display_message_fullscreen_P(_i("Sorry, I am not online right now. Please try me later."), nlines); ////MSG_AUTOLOADING_ONLY_IF_FSENS_ON c=20 r=4
+  for (int i = 0; i < 50; i++) { //wait max. 5s
+    delay_keep_alive(100);
+  }
+  lcd_puts_P(PSTR(ESC_2J ESC_H(2, 1) "Prusa i3 Fabman" ESC_H(3, 2) "Swipe to login"));
+}
+
+void lcd_FM_FM_update_screen() {
+  SERIAL_PROTOCOLLN("Stage 3 = reached lcd_FM_login_screen()");
+  lcd_update_enable(false);
+  lcd_clear();
+  lcd_set_custom_characters_progress();
+  
+  lcd_puts_at_P(2, 1, _i("Prusa i3 Fabman"));
+  lcd_puts_at_P(3, 2, _i("Updating FM fw.."));
+  while (Fabman_mode == 1) {
+    delay_keep_alive(100);
+    proc_commands();
+  }
+  lcd_set_custom_characters_degree();
+  lcd_update_enable(true);
+  lcd_update(2);
+}
+
+/*#FLB*/
 //-//
 static void lcd_sound_state_set(void)
 {
@@ -6608,6 +6743,9 @@ static void lcd_main_menu()
   // Majkl superawesome menu
 
 
+ /*#FLB*/
+ menu_item_text_P_FL(FM_UserName);
+ /*#FLB*/
  MENU_ITEM_BACK_P(_T(MSG_WATCH));
 
 #ifdef RESUME_DEBUG 
@@ -7038,6 +7176,11 @@ void lcd_print_stop()
 	stoptime = _millis();
 	unsigned long t = (stoptime - starttime - pause_time) / 1000; //time in s
 	pause_time = 0;
+  /*#FLB*/
+  stoppedInfo = 1;
+  filament_used_in_last_print();
+  time_used_in_last_print = t;
+  /*#FLB*/
 	save_statistics(total_filament_used, t);
 	lcd_return_to_status();
 	lcd_ignore_click(true);

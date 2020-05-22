@@ -96,6 +96,10 @@ extern void menu_item_dummy(void);
 
 #define MENU_ITEM_TEXT_P(str) do { if (menu_item_text_P(str)) return; } while (0)
 extern uint8_t menu_item_text_P(const char* str);
+/*#FLB*/
+#define MENU_ITEM_TEXT_P_FL(str) do { if (menu_item_text_P_FL(str)) return; } while (0)
+extern uint8_t menu_item_text_P_FL(char str[18]);
+/*#FLB*/
 
 #define MENU_ITEM_SUBMENU_P(str, submenu) do { if (menu_item_submenu_P(str, submenu)) return; } while (0)
 extern uint8_t menu_item_submenu_P(const char* str, menu_func_t submenu);
