@@ -72,6 +72,15 @@ int8_t uart2_rx_str_P(const char* str)
 	return 1;                                  //all characters match - return 1
 }
 
+/*#FLB*/
+// Define integer values for later comparison
+#define PRINTER_MK25  1
+#define PRINTER_MK25S 2
+#define PRINTER_MK3   3
+#define PRINTER_MK3S  4
+
+#if (PRINTER_TYPE == PRINTER_MK3) || (PRINTER_TYPE == PRINTER_MK3S)
+/*#FLB*/
 ISR(USART2_RX_vect)
 {
 	//printf_P(PSTR("USART2_RX_vect \n") );
@@ -82,3 +91,6 @@ ISR(USART2_RX_vect)
 	}
 }
 
+/*#FLB*/
+#endif
+/*#FLB*/
